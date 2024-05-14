@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+
+    <title>Polly Fill com scanline</title>
+</head>
+
+<body>
+    <h1>PREENCHIMENTO DE POLIGONOS</h1>
+    <canvas id="myCanvas" width="1450" height="500" onmousedown="handleCanvasClick(event)" oncontextmenu="return false;"></canvas>
+    <br>
+    <label for="color0">Cor do Vértice 0:</label>
+    <input type="color" id="color0" value="#ff0000">
+    <br>
+    <label for="color1">Cor do Vértice 1:</label>
+    <input type="color" id="color1" value="#00ff00">
+    <br>
+    <label for="color2">Cor do Vértice 2:</label>
+    <input type="color" id="color2" value="#0000ff">
+    <br>
+    <label for="selectTriangle">Selecionar Triângulo:</label>
+    <select id="selectTriangle" onchange="selectTriangle()"></select>
+    <button onclick="changecolor()">Mudar cor do triangulo</button>
+    <br>
+    <button onclick="cleanOne()">Apagar triângulo selecionado</button>
+    <br>
+    <button onclick="cleanAll()">Apagar triângulos</button>
+    <script src="pollyfill.js"></script>
+</body>
+
+</html>
