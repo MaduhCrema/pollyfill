@@ -1,49 +1,40 @@
 const canvas = document.getElementById("myCanvas");
 const context = canvas.getContext("2d");
 const selectTriangleElement = document.getElementById("selectTriangle");
-// Lista de vértices e triângulos
+
 const vertices = [];
 const triangles = [];
-
 var selectedTriangleIndex = 0;
 
-// Estrutura de um vértice
 function Vertex(x, y, color) {
   this.x = x;
   this.y = y;
   this.color = color;
 }
 
-// Estrutura de um triângulo
-function Triangle(vertex1, vertex2, vertex3) {
+function Triangle(vertex1, vertex2, vertex3, edgeColor = [0, 0, 0]) {
   this.vertices = [vertex1, vertex2, vertex3];
+  this.edgeColor = edgeColor;
 }
 
-// Adiciona um vértice na lista de vértices
 function addVertex(x, y, color) {
   const vertex = new Vertex(x, y, color);
   vertices.push(vertex);
-  //console.log(vertices);
   if (vertices.length == 3) {
     addTriangle(vertices);
   }
 }
 
-// Adiciona um triângulo na lista de triângulos
 function addTriangle(vertices) {
   const triangle = new Triangle(vertices[0], vertices[1], vertices[2]);
   triangles.push(triangle);
 }
 
-//Função para capturar os cliques do canvas
 function handleCanvasClick(event) {
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
-
-  // Adiciona o vértice clicado na lista
   addVertex(x, y, [0, 0, 0]);
-  // Atualiza a visualização do canvas para rasterizar o triangulo
   updateCanvas();
 }
 
@@ -51,24 +42,19 @@ function updateCanvas() {
   if (vertices.length >= 3) {
     getcolor();
     triangles.forEach((triangle) => {
-      // Obtém os vértices do triângulo
-      const vertic = triangle.vertices;
-      // Define os vértices do triângulo
-      const vertice = [vertic[0], vertic[1], vertic[2]];
+      const vertice = triangle.vertices;
+      rasterizeTriangle(context, vertice);
+      drawEdges(triangle, triangle.edgeColor);
     });
     createTriangle();
   }
 }
 
-//chamado quando um triangulo é excluído da lista triangulos
 function update() {
   triangles.forEach((triangle) => {
-    // Obtém os vértices do triângulo
-    const vertic = triangle.vertices;
-    // Define os vértices do triângulo
-    const vertice = [vertic[0], vertic[1], vertic[2]];
-    // Rasteriza o triângulo
+    const vertice = triangle.vertices;
     rasterizeTriangle(context, vertice);
+    drawEdges(triangle, triangle.edgeColor);
   });
 }
 
@@ -80,18 +66,13 @@ function cleanAll() {
 
 function cleanOne() {
   if (triangles.length > 1) {
-    // Verifica se há um triângulo selecionado
     if (
       selectedTriangleIndex >= 0 &&
       selectedTriangleIndex < triangles.length
     ) {
-      // Remove o triângulo da lista de triângulos
       triangles.splice(selectedTriangleIndex, 1);
-      // Remove da opção de seleção
       selectTriangleElement.remove(selectedTriangleIndex);
-      // Limpa o canvas inteiro
       context.clearRect(0, 0, canvas.width, canvas.height);
-      // Redesenha os triângulos restantes
       update();
     }
   } else if (triangles.length == 1) {
@@ -99,22 +80,19 @@ function cleanOne() {
     updateCanvas();
   }
 }
+
 function createTriangle() {
   triangles.forEach((triangle) => {
-    // Obtém os vértices do triângulo
-    const vertic = triangle.vertices;
-    // Define os vértices do triângulo
-    const vertice = [vertic[0], vertic[1], vertic[2]];
-    // Rasteriza o triângulo
+    const vertice = triangle.vertices;
     rasterizeTriangle(context, vertice);
+    drawEdges(triangle, triangle.edgeColor);
   });
 
-  // Adiciona a opção de seleção do triângulo
   const option = document.createElement("option");
   option.value = triangles.length - 1;
   option.text = `Triângulo ${triangles.length}`;
   selectTriangleElement.add(option);
-  //reseta as vertices
+
   vertices.length = 0;
 }
 
@@ -139,10 +117,12 @@ function getcolor() {
 function selectTriangle() {
   selectedTriangleIndex = selectTriangleElement.selectedIndex;
 }
+
 function changecolor() {
   const color0Input = document.getElementById("color0");
   const color1Input = document.getElementById("color1");
   const color2Input = document.getElementById("color2");
+  const edgeColorInput = document.getElementById("edgeColor");
 
   triangles[selectedTriangleIndex].vertices[0].color = hexToRgb(
     color0Input.value
@@ -153,93 +133,90 @@ function changecolor() {
   triangles[selectedTriangleIndex].vertices[2].color = hexToRgb(
     color2Input.value
   );
+  triangles[selectedTriangleIndex].edgeColor = hexToRgb(edgeColorInput.value);
 
+  context.clearRect(0, 0, canvas.width, canvas.height);
   triangles.forEach((triangle) => {
-    // Obtém os vértices do triângulo
-    const vertic = triangle.vertices;
-    // Define os vértices do triângulo
-    const vertice = [vertic[0], vertic[1], vertic[2]];
-    // Rasteriza o triângulo
+    const vertice = triangle.vertices;
     rasterizeTriangle(context, vertice);
+    drawEdges(triangle, triangle.edgeColor);
   });
+}
+
+function drawPixel(x, y, color) {
+  context.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+  context.fillRect(x, y, 1, 1);
+}
+
+function drawEdges(triangle, color) {
+  const [v1, v2, v3] = triangle.vertices;
+
+  context.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(v1.x, v1.y);
+  context.lineTo(v2.x, v2.y);
+  context.lineTo(v3.x, v3.y);
+  context.lineTo(v1.x, v1.y);
+  context.stroke();
 }
 
 function rasterizeTriangle(context, vertices) {
-  // Ordena os vértices verticalmente e horizontalmente
-  vertices.sort((a, b) => {
-    if (a.y !== b.y) {
-      return a.y - b.y;
-    } else {
-      return a.x - b.x;
+  const [v1, v2, v3] = vertices;
+  const minY = Math.min(v1.y, v2.y, v3.y);
+  const maxY = Math.max(v1.y, v2.y, v3.y);
+  const intersections = {};
+  const verticesArr = [v1, v2, v3];
+
+  verticesArr.forEach((v_start, i) => {
+    let v_end = verticesArr[(i + 1) % verticesArr.length];
+    if (v_start.y === v_end.y) return;
+    if (v_start.y > v_end.y) [v_start, v_end] = [v_end, v_start];
+    const dy = v_end.y - v_start.y;
+    const dx = v_end.x - v_start.x;
+    const taxa_inversa = dx / dy;
+    let x = v_start.x;
+    let r = v_start.color[0],
+      g = v_start.color[1],
+      b = v_start.color[2];
+    const dr = (v_end.color[0] - v_start.color[0]) / dy;
+    const dg = (v_end.color[1] - v_start.color[1]) / dy;
+    const db = (v_end.color[2] - v_start.color[2]) / dy;
+
+    for (let y = Math.floor(v_start.y); y < Math.floor(v_end.y); y++) {
+      if (!intersections[y]) {
+        intersections[y] = [];
+      }
+      intersections[y].push({ x, color: [r, g, b] });
+      x += taxa_inversa;
+      r += dr;
+      g += dg;
+      b += db;
     }
   });
 
-  // Encontra a coordenada y máxima e mínima do triângulo
-  const minY = Math.floor(vertices[0].y);
-  const maxY = Math.ceil(vertices[2].y);
+  for (let y = Math.floor(minY); y <= Math.ceil(maxY); y++) {
+    if (!intersections[y]) continue;
+    intersections[y].sort((a, b) => a.x - b.x);
 
-  for (let y = minY; y <= maxY; y++) {
-    let intersections = [];
+    for (let i = 0; i < intersections[y].length - 1; i += 2) {
+      const { x: xStart, color: colorStart } = intersections[y][i];
+      const { x: xEnd, color: colorEnd } = intersections[y][i + 1];
 
-    // Calcula as interseções com cada aresta do triângulo
-    for (let i = 0; i < 3; i++) {
-      const v1 = vertices[i];
-      const v2 = vertices[(i + 1) % 3];
+      const pixels = xEnd - xStart;
+      const dr = (colorEnd[0] - colorStart[0]) / pixels;
+      const dg = (colorEnd[1] - colorStart[1]) / pixels;
+      const db = (colorEnd[2] - colorStart[2]) / pixels;
+      let r = colorStart[0],
+        g = colorStart[1],
+        b = colorStart[2];
 
-      // Ignora arestas horizontais
-      if ((v1.y <= y && v2.y > y) || (v2.y <= y && v1.y > y)) {
-        // Calcula a interseção da aresta com a linha de varredura
-        const x = v1.x + ((y - v1.y) / (v2.y - v1.y)) * (v2.x - v1.x);
-        //console.log(x);
-        intersections.push({ x, vertex1: v1, vertex2: v2 });
-      }
-    }
-
-    // Ordena as interseções horizontalmente
-    intersections.sort((a, b) => a.x - b.x);
-
-    // Preenche os pixels entre as interseções com o degradê de cores
-    if (intersections.length >= 2) {
-      const xStart = intersections[0].x;
-      const xEnd = intersections[1].x;
-      //console.log(xStart);
-
-      // Calcula as cores iniciais e finais para a interpolação
-      const colorStart = coresInterpoladas(
-        intersections[0].vertex1.color,
-        intersections[0].vertex2.color,
-        (xStart - intersections[0].vertex1.x) /
-          (intersections[0].vertex2.x - intersections[0].vertex1.x)
-      );
-      const colorEnd = coresInterpoladas(
-        intersections[1].vertex1.color,
-        intersections[1].vertex2.color,
-        (xEnd - intersections[1].vertex1.x) /
-          (intersections[1].vertex2.x - intersections[1].vertex1.x)
-      );
-
-      for (let x = Math.floor(xStart); x <= Math.ceil(xEnd); x++) {
-        const t = (x - xStart) / (xEnd - xStart);
-        const colorInterpolated = coresInterpoladas(colorStart, colorEnd, t);
-
-        // Imprime as cores no console
-        //console.log(
-        //  `Pixel at (${x}, ${y}): RGB(${colorInterpolated[0]}, ${colorInterpolated[1]}, ${colorInterpolated[2]})`
-        //);
-
-        context.fillStyle = `rgb(${colorInterpolated[0]}, ${colorInterpolated[1]}, ${colorInterpolated[2]})`;
-        context.fillRect(x, y, 1, 1); // Desenha o pixel
+      for (let x = Math.floor(xStart); x <= Math.floor(xEnd); x++) {
+        drawPixel(x, y, [Math.round(r), Math.round(g), Math.round(b)]);
+        r += dr;
+        g += dg;
+        b += db;
       }
     }
   }
-}
-
-function coresInterpoladas(color1, color2, t) {
-  const r = Math.round(color1[0] + t * (color2[0] - color1[0]));
-
-  const g = Math.round(color1[1] + t * (color2[1] - color1[1]));
-
-  const b = Math.round(color1[2] + t * (color2[2] - color1[2]));
-
-  return [r, g, b];
 }
