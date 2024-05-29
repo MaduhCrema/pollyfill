@@ -24,6 +24,11 @@
     <br>
     <label for="selectTriangle">Selecionar Triângulo:</label>
     <select id="selectTriangle" onchange="selectTriangle()"></select>
+    <br>
+    <label>Espessura do contorno</label>
+    <input type="number" id="thickness" value="2">
+    <button onclick="changeedgethickness()">Mudar espessura da aresta</button>
+    <br>
     <input type="color" id="edgeColor" name="edgeColor" value="#000000">
     <button onclick="changecolor()">Mudar cor do triangulo/aresta</button>
     <br>
