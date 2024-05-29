@@ -12,9 +12,16 @@ function Vertex(x, y, color) {
   this.color = color;
 }
 
-function Triangle(vertex1, vertex2, vertex3, edgeColor = [0, 0, 0]) {
+function Triangle(
+  vertex1,
+  vertex2,
+  vertex3,
+  edgeColor = [0, 0, 0],
+  edgethickness
+) {
   this.vertices = [vertex1, vertex2, vertex3];
   this.edgeColor = edgeColor;
+  this.edgethickness = edgethickness;
 }
 
 function addVertex(x, y, color) {
@@ -26,7 +33,16 @@ function addVertex(x, y, color) {
 }
 
 function addTriangle(vertices) {
-  const triangle = new Triangle(vertices[0], vertices[1], vertices[2]);
+  const thickness = document.getElementById("thickness").value;
+  const edgecolorInput = document.getElementById("edgeColor");
+  const edgecolor = hexToRgb(edgecolorInput.value);
+  const triangle = new Triangle(
+    vertices[0],
+    vertices[1],
+    vertices[2],
+    edgecolor,
+    thickness
+  );
   triangles.push(triangle);
 }
 
@@ -54,7 +70,7 @@ function update() {
   triangles.forEach((triangle) => {
     const vertice = triangle.vertices;
     rasterizeTriangle(context, vertice);
-    drawEdges(triangle, triangle.edgeColor);
+    drawEdges(triangle, triangle.edgeColor, thickness);
   });
 }
 
@@ -136,11 +152,61 @@ function changecolor() {
   triangles[selectedTriangleIndex].edgeColor = hexToRgb(edgeColorInput.value);
 
   context.clearRect(0, 0, canvas.width, canvas.height);
+
   triangles.forEach((triangle) => {
     const vertice = triangle.vertices;
     rasterizeTriangle(context, vertice);
     drawEdges(triangle, triangle.edgeColor);
   });
+}
+
+function changeedgethickness() {
+  const thickness = document.getElementById("thickness").value;
+  triangles[selectedTriangleIndex].edgethickness = thickness;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  triangles.forEach((triangle) => {
+    const vertice = triangle.vertices;
+    rasterizeTriangle(context, vertice);
+    drawEdges(triangle, triangle.edgeColor);
+  });
+}
+
+function drawLine(x1, y1, x2, y2, color, thickness) {
+  //console.log(thickness);
+  let dx = Math.abs(x2 - x1); //Diferença absoluta
+  let dy = Math.abs(y2 - y1);
+  //incrementa ou decrementa na direção
+  let dirx = x1 < x2 ? 1 : -1;
+  let diry = y1 < y2 ? 1 : -1;
+  let err_hv = dx - dy; // proximo ponto horizontal ou vertical
+
+  while (true) {
+    for (
+      let i = -Math.floor(thickness / 2);
+      i <= Math.floor(thickness / 2);
+      i++
+    ) {
+      for (
+        let j = -Math.floor(thickness / 2);
+        j <= Math.floor(thickness / 2);
+        j++
+      ) {
+        drawPixel(x1 + i, y1 + j, color); //depende da espessura
+      }
+    }
+
+    if (x1 === x2 && y1 === y2) break;
+    let e2 = 2 * err_hv; //decide onde
+    if (e2 > -dy) {
+      err_hv -= dy;
+      x1 += dirx; //horizontal
+    }
+    if (e2 < dx) {
+      err_hv += dx;
+      y1 += diry; //vertical
+    }
+  }
 }
 
 function drawPixel(x, y, color) {
@@ -150,15 +216,11 @@ function drawPixel(x, y, color) {
 
 function drawEdges(triangle, color) {
   const [v1, v2, v3] = triangle.vertices;
+  const thickness = triangle.edgethickness;
 
-  context.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-  context.lineWidth = 2;
-  context.beginPath();
-  context.moveTo(v1.x, v1.y);
-  context.lineTo(v2.x, v2.y);
-  context.lineTo(v3.x, v3.y);
-  context.lineTo(v1.x, v1.y);
-  context.stroke();
+  drawLine(v1.x, v1.y, v2.x, v2.y, color, thickness);
+  drawLine(v2.x, v2.y, v3.x, v3.y, color, thickness);
+  drawLine(v3.x, v3.y, v1.x, v1.y, color, thickness);
 }
 
 function rasterizeTriangle(context, vertices) {
@@ -169,9 +231,10 @@ function rasterizeTriangle(context, vertices) {
   const verticesArr = [v1, v2, v3];
 
   verticesArr.forEach((v_start, i) => {
-    let v_end = verticesArr[(i + 1) % verticesArr.length];
+    let v_end = verticesArr[(i + 1) % 3];
     if (v_start.y === v_end.y) return;
     if (v_start.y > v_end.y) [v_start, v_end] = [v_end, v_start];
+    //taxas
     const dy = v_end.y - v_start.y;
     const dx = v_end.x - v_start.x;
     const taxa_inversa = dx / dy;
@@ -183,7 +246,7 @@ function rasterizeTriangle(context, vertices) {
     const dg = (v_end.color[1] - v_start.color[1]) / dy;
     const db = (v_end.color[2] - v_start.color[2]) / dy;
 
-    for (let y = Math.floor(v_start.y); y < Math.floor(v_end.y); y++) {
+    for (let y = Math.round(v_start.y); y < Math.round(v_end.y); y++) {
       if (!intersections[y]) {
         intersections[y] = [];
       }
@@ -195,11 +258,13 @@ function rasterizeTriangle(context, vertices) {
     }
   });
 
-  for (let y = Math.floor(minY); y <= Math.ceil(maxY); y++) {
-    if (!intersections[y]) continue;
+  for (let y = Math.round(minY); y <= Math.round(maxY); y++) {
+    if (!intersections[y]) {
+      continue;
+    }
     intersections[y].sort((a, b) => a.x - b.x);
 
-    for (let i = 0; i < intersections[y].length - 1; i += 2) {
+    for (let i = 0; i < 1; i += 2) {
       const { x: xStart, color: colorStart } = intersections[y][i];
       const { x: xEnd, color: colorEnd } = intersections[y][i + 1];
 
@@ -211,7 +276,7 @@ function rasterizeTriangle(context, vertices) {
         g = colorStart[1],
         b = colorStart[2];
 
-      for (let x = Math.floor(xStart); x <= Math.floor(xEnd); x++) {
+      for (let x = Math.ceil(xStart); x <= Math.floor(xEnd); x++) {
         drawPixel(x, y, [Math.round(r), Math.round(g), Math.round(b)]);
         r += dr;
         g += dg;
